@@ -1,21 +1,16 @@
 #!/usr/bin/python
 # -*- coding:utf-8 -*-
 import inspect
-import copy
-
 
 class Handler:
 
-    def __init__(self, event_name, handle_func):
-        self.event_name = event_name
+    def __init__(self, handle_func):
         self.__check_handle_func(handle_func)
         self.handle_func = handle_func
 
     def handle(self, event):
-        if self.event_name != event.event_name:
-            raise EventMismatch(event.event_name, self.event_name)
-        else:
-            self.handle_func(self.__build_params(event))
+        params = self.__build_params(event)
+        self.handle_func(**params)
 
     def __check_handle_func(self, handle_func):
         if not callable(handle_func):
@@ -32,8 +27,7 @@ class Handler:
             self.__param_list = []
             self.__param_default = {}
 
-            args_len = 0 if argspec.args is None else len(
-                argspec.args)
+            args_len = 0 if argspec.args is None else len(argspec.args)
             defaults_len = 0 if argspec.defaults is None else len(
                 argspec.defaults)
             index_offset = args_len - defaults_len
@@ -54,17 +48,6 @@ class Handler:
                 else:
                     raise HandleFuncParamMissing(field)
         return params
-
-
-class EventMismatch(Exception):
-
-    def __init__(self, cur_event_name, target_event_name):
-        self.cur_event_name = cur_event_name
-        self.target_event_name = target_event_name
-        super(
-            EventMismatch, self).__init__(
-                '[Event Mismatch] cur_event_name: %s, target_event_name: %s.' %
-         (cur_event_name, target_event_name))
 
 
 class HandleFuncParamMissing(Exception):
