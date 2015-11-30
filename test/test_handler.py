@@ -7,17 +7,22 @@ from earo.event import Event
 from earo.handler import Handler, HandleFuncParamMissing, InvalidHandleFunc
 import unittest
 
+
 def foo(name, age=15):
     pass
+
 
 def a1(name, age=15, *args):
     pass
 
+
 def a2(name, age=15, **kwargs):
     pass
 
+
 def a3(name, age=15, *args, **kwargs):
     pass
+
 
 class TestEvent(unittest.TestCase):
 
@@ -31,6 +36,10 @@ class TestEvent(unittest.TestCase):
         handler = Handler(foo)
         self.assertSequenceEqual(handler._Handler__param_list, ['name', 'age'])
         self.assertDictEqual(handler._Handler__param_default, {'age': 15})
+
+    def test_handler_name(self):
+        handler = Handler(foo)
+        self.assertEqual('__main__.foo', handler.name)
 
     def test_invalid_handle_func(self):
         with self.assertRaises(InvalidHandleFunc):

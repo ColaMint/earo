@@ -7,6 +7,7 @@ class Handler:
     def __init__(self, handle_func):
         self.__check_handle_func(handle_func)
         self.handle_func = handle_func
+        self.name = '%s.%s' % (handle_func.__module__, handle_func.__name__)
 
     def handle(self, event):
         params = self.__build_params(event)
