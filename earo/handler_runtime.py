@@ -3,16 +3,17 @@
 from datetime import datetime
 
 
-class HandlerRuntime:
+class HandlerRuntime(object):
 
-    def __init__(self, handler):
+    def __init__(self, handler, event):
         self.begin_time = None
-        self.end_time   = None
-        self.exception  = None
-        self.handler    = handler
+        self.end_time = None
+        self.exception = None
+        self.handler = handler
+        self.event = event
 
-    def handler_name(self):
-        return self.handler.name
+    def run(self):
+        self.handler.handle(self.event, self)
 
     @property
     def succeeded(self):

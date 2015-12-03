@@ -18,6 +18,9 @@ def foo(name):
 def boo(name):
     names.append('boo-%s' % name)
 
+def eoo(name):
+    names.append('eoo-%s' % name)
+    raise Exception('eoo')
 
 class TestEvent(unittest.TestCase):
 
@@ -30,9 +33,9 @@ class TestEvent(unittest.TestCase):
     def test_local(self):
         manager = Manager()
         self.assertDictEqual(manager._Manager__local.event_handler_map, dict())
-        self.assertIsInstance(manager._Manager__local.handler_queue, Queue)
+        self.assertIsInstance(manager._Manager__local.handler_runtime_node_queue, Queue)
         self.assertEqual(
-            manager._Manager__local.is_comsuming_handler_queue, False)
+            manager._Manager__local.logic_tree, None)
         self.assertEqual(manager._Manager__local.unknown, None)
 
     def test_on_and_find(self):
@@ -55,15 +58,29 @@ class TestEvent(unittest.TestCase):
 
     def test_fire(self):
         manager = Manager()
-        foo_handler = Handler(foo)
-        boo_handler = Handler(boo)
+        def fire():
+            names.append('fire')
+            event = Event('display', name='B')
+            manager.fire(event)
+        foo_handler  = Handler(foo)
+        boo_handler  = Handler(boo)
+        eoo_handler  = Handler(eoo)
+        fire_handler = Handler(fire)
         manager.on('show', foo_handler)
         manager.on('show', boo_handler, True)
+        manager.on('show', fire_handler, True)
+        manager.on('display', eoo_handler)
         show_event = Event('show', name = 'A')
-        manager.fire(show_event)
+        logic_tree = manager.fire(show_event)
         self.assertListEqual(
             names,
-            ['foo-A', 'boo-A'])
+            ['foo-A', 'boo-A', 'fire', 'eoo-B'])
+        self.assertEqual(logic_tree.event_count, 2)
+        self.assertEqual(logic_tree.handler_runtime_count, 4)
+        self.assertEqual(logic_tree.exception_count, 1)
+        self.assertNotEqual(logic_tree.begin_time, None)
+        self.assertNotEqual(logic_tree.end_time, None)
+        self.assertNotEqual(logic_tree.time_cost, -1)
 
 
 if __name__ == '__main__':

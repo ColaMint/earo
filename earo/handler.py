@@ -2,16 +2,23 @@
 # -*- coding:utf-8 -*-
 import inspect
 
-class Handler:
+
+class Handler(object):
 
     def __init__(self, handle_func):
         self.__check_handle_func(handle_func)
         self.handle_func = handle_func
         self.name = '%s.%s' % (handle_func.__module__, handle_func.__name__)
 
-    def handle(self, event):
-        params = self.__build_params(event)
-        self.handle_func(**params)
+    def handle(self, event, handler_runtime):
+        try:
+            handler_runtime.record_begin_time()
+            params = self.__build_params(event)
+            self.handle_func(**params)
+        except Exception as e:
+            handler_runtime.record_exception(e)
+        finally:
+            handler_runtime.record_end_time()
 
     def __check_handle_func(self, handle_func):
         if not callable(handle_func):

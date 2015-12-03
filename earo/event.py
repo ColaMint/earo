@@ -2,7 +2,7 @@
 # -*- coding:utf-8 -*-
 
 
-class Event:
+class Event(object):
     built_in_fields = ['event']
 
     def __init__(self, event_name, **kwarg):
