@@ -13,3 +13,6 @@ class Configure(dict):
         self['log_path'] = '/tmp/earo/'
         self['debug']    = False
         pass
+
+    def __getattr__(self, name):
+        return self.get(name, None)

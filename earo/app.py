@@ -1,15 +1,15 @@
 #!/usr/bin/python
 # -*- coding:utf-8 -*-
-from manager import Manager
 from configure import Configure
 from Queue import Queue
 from util.local import Local
 from logic_tree import Node, LogicTree
 from handler_runtime import HandlerRuntime
 import logging
+import sys
 
 
-class App(Manager):
+class App(object):
 
     def __init__(self, config={}):
         self.config = Configure(config)
@@ -28,7 +28,19 @@ class App(Manager):
         self.__global.event_handler_map = {}
 
     def __init_logger(self):
-        self.logger = None
+
+        self.logger = logging.getLogger('earo')
+        formatter = logging.Formatter('[%(asctime)s: %(levelname)s] %(message)s')
+        if self.config.debug:
+            ch = logging.StreamHandler(sys.stdout)
+            ch.setFormatter(formatter)
+            ch.setLevel(logging.DEBUG)
+            self.logger.addHandler(ch)
+        else:
+            fh = logging.FileHandler(self.config.log_path, 'w')
+            fh.setFormatter(fh)
+            fh.setLevel(logging.INFO)
+            self.logger.addHandler(fh)
 
     def __find_handlers(self, event_name):
         handlers = []
