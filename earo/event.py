@@ -1,8 +1,9 @@
 #!/usr/bin/python
 # -*- coding:utf-8 -*-
+from util.dictable import Dictable
 
 
-class Event(object):
+class Event(Dictable):
     built_in_fields = ['event']
 
     def __init__(self, event_name, **kwarg):
@@ -26,6 +27,13 @@ class Event(object):
 
     def contains_key(self, key):
         return key in self.params
+
+    @property
+    def dict(self):
+        event = dict()
+        event['event_name'] = self.event_name
+        event['params'] = self.params
+        return event
 
 
 class BuiltInEventParam(Exception):

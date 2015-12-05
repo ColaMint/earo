@@ -2,13 +2,16 @@
 # -*- coding:utf-8 -*-
 from handler_runtime import HandlerRuntime
 from event import Event
+from util.time import datetime_to_str
+from util.dictable import Dictable, check_dictable
 
 
-class Node(object):
+class Node(Dictable):
 
     def __init__(self, item):
+        check_dictable(item)
         self.item = item
-        self.child_nodes = []
+        self.child_nodes = list()
 
     def add_child_node(self, node):
         self.child_nodes.append(node)
@@ -17,12 +20,22 @@ class Node(object):
     def type(self):
         return self.item.__class__
 
+    @property
+    def dict(self):
+        node = dict()
+        node['item'] = self.item.dict
+        node['type'] = self.item.__class__
+        node['child_nodes'] = list()
+        for child_node in self.child_nodes:
+            node['child_nodes'].append(child_node.dict)
+        return node
 
-class Tree(object):
+
+class Tree(Dictable):
 
     def __init__(self, root):
+        check_dictable(root)
         self.root = root
-
 
 class LogicTree(Tree):
 
@@ -45,8 +58,6 @@ class LogicTree(Tree):
         else:
             self.time_cost = -1
 
-
-
     def __statistics(self, node):
         if node.type == Event:
             self.event_count += 1
@@ -63,3 +74,17 @@ class LogicTree(Tree):
                 self.end_time = handelr_runtime.end_time
         for child_node in node.child_nodes:
             self.__statistics(child_node)
+
+    @property
+    def dict(self):
+        tree = dict()
+        tree['root'] = self.root.dict
+        tree['begin_time'] = datetime_to_str(
+            self.begin_time) if self.begin_time is not None else None
+        tree['end_time'] = datetime_to_str(
+            self.end_time) if self.end_time is not None else None
+        tree['time_cost'] = self.time_cost
+        tree['event_count'] = self.event_count
+        tree['handler_runtime_count'] = self.handler_runtime_count
+        tree['exception_count'] = self.exception_count
+        return tree

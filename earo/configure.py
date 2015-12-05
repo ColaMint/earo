@@ -10,7 +10,7 @@ class Configure(dict):
         self.update(config)
 
     def __setup_defaults(self):
-        self['log_path'] = '/tmp/earo/'
+        self['log_path'] = '/tmp/earo.log'
         self['debug']    = False
         pass
 

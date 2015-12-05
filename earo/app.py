@@ -7,6 +7,7 @@ from logic_tree import Node, LogicTree
 from handler_runtime import HandlerRuntime
 import logging
 import sys
+import traceback
 
 
 class App(object):
@@ -28,7 +29,6 @@ class App(object):
         self.__global.event_handler_map = {}
 
     def __init_logger(self):
-
         self.logger = logging.getLogger('earo')
         formatter = logging.Formatter('[%(asctime)s: %(levelname)s] %(message)s')
         if self.config.debug:
@@ -36,11 +36,13 @@ class App(object):
             ch.setFormatter(formatter)
             ch.setLevel(logging.DEBUG)
             self.logger.addHandler(ch)
+            self.logger.setLevel(logging.DEBUG)
         else:
-            fh = logging.FileHandler(self.config.log_path, 'w')
-            fh.setFormatter(fh)
+            fh = logging.FileHandler(self.config.log_path)
+            fh.setFormatter(formatter)
             fh.setLevel(logging.INFO)
             self.logger.addHandler(fh)
+            self.logger.setLevel(logging.INFO)
 
     def __find_handlers(self, event_name):
         handlers = []
@@ -73,7 +75,10 @@ class App(object):
             while self.__local.handler_runtime_node_queue.qsize() > 0:
                 handler_runtime_node = self.__local.handler_runtime_node_queue.get()
                 self.__local.last_handler_runtime_node = handler_runtime_node
-                handler_runtime_node.item.run()
+                handler_runtime = handler_runtime_node.item
+                handler_runtime.run()
+                if handler_runtime.exception is not None:
+                    self.logger.error('\n' + handler_runtime.exception.traceback)
             self.__local.logic_tree.statistics()
             return self.__local.logic_tree
         else:

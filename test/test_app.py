@@ -8,9 +8,17 @@ from earo.handler import Handler
 from earo.event import Event
 import unittest
 from Queue import Queue
+import sys
 
 names = []
 
+config = {
+    'debug': True,
+    'log_path': '/tmp/test.log'
+}
+
+sys.stdout = None
+sys.stderr = None
 
 def foo(name):
     names.append('foo-%s' % name)
@@ -33,8 +41,14 @@ class TestEvent(unittest.TestCase):
     def tearDown(self):
         pass
 
+    def test_config(self):
+        app = App(config)
+        self.assertEqual(True, app.config.debug)
+        self.assertEqual('/tmp/test.log', app.config.log_path)
+        self.assertEqual(None, app.config.unknown)
+
     def test_local(self):
-        app = App()
+        app = App(config)
         self.assertDictEqual(app._App__local.event_handler_map, dict())
         self.assertIsInstance(
             app._App__local.handler_runtime_node_queue, Queue)
@@ -43,7 +57,7 @@ class TestEvent(unittest.TestCase):
         self.assertEqual(app._App__local.unknown, None)
 
     def test_on_and_find(self):
-        app = App()
+        app = App(config)
         handlers = app._App__find_handlers('show')
         self.assertListEqual(handlers, list())
 
@@ -61,7 +75,7 @@ class TestEvent(unittest.TestCase):
             [boo_handler])
 
     def test_fire(self):
-        app = App()
+        app = App(config)
 
         def fire():
             names.append('fire')

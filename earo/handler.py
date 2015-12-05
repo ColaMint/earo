@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # -*- coding:utf-8 -*-
 import inspect
+import traceback
 
 
 class Handler(object):
@@ -16,6 +17,7 @@ class Handler(object):
             params = self.__build_params(event)
             self.handle_func(**params)
         except Exception as e:
+            e.traceback = traceback.format_exc()
             handler_runtime.record_exception(e)
         finally:
             handler_runtime.record_end_time()
