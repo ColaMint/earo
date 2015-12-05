@@ -11,7 +11,8 @@ import sys
 
 class App(object):
 
-    def __init__(self, config={}):
+    def __init__(self, name, config={}):
+        self.name = name
         self.config = Configure(config)
         self.__init_local_and_global()
         self.__init_logger()
@@ -28,8 +29,10 @@ class App(object):
         self.__global.event_handler_map = {}
 
     def __init_logger(self):
-        self.logger = logging.getLogger('earo')
-        formatter = logging.Formatter('[%(asctime)s: %(levelname)s] %(message)s')
+        self.logger = logging.getLogger(self.name)
+        self.logger.propagate = 0
+        formatter = logging.Formatter(
+            '[%(asctime)s: %(levelname)s] %(message)s')
         if self.config.debug:
             ch = logging.StreamHandler(sys.stdout)
             ch.setFormatter(formatter)
@@ -77,8 +80,14 @@ class App(object):
                 handler_runtime = handler_runtime_node.item
                 handler_runtime.run()
                 if handler_runtime.exception is not None:
-                    self.logger.error('\n' + handler_runtime.exception.traceback)
-            self.__local.runtime_tree.statistics()
-            return self.__local.runtime_tree
+                    self.logger.error(
+                        'runtime_tree.id: %s\n%s' %
+                        (self.__local.runtime_tree.id,
+                         handler_runtime.exception.traceback))
+            runtime_tree = self.__local.runtime_tree
+            runtime_tree.statistics()
+            self.__local.runtime_tree = None
+            self.__local.last_handler_runtime_node = None
+            return runtime_tree
         else:
             self.__local.last_handler_runtime_node.add_child_node(event_node)

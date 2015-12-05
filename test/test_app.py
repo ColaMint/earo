@@ -40,13 +40,13 @@ class TestEvent(unittest.TestCase):
         pass
 
     def test_config(self):
-        app = App(config)
+        app = App('test_config', config)
         self.assertEqual(True, app.config.debug)
         self.assertEqual('/tmp/test.log', app.config.log_path)
         self.assertEqual(None, app.config.unknown)
 
     def test_local(self):
-        app = App(config)
+        app = App('test_local', config)
         self.assertDictEqual(app._App__local.event_handler_map, dict())
         self.assertIsInstance(
             app._App__local.handler_runtime_node_queue, Queue)
@@ -55,7 +55,7 @@ class TestEvent(unittest.TestCase):
         self.assertEqual(app._App__local.unknown, None)
 
     def test_on_and_find(self):
-        app = App(config)
+        app = App('test_on_and_find', config)
         handlers = app._App__find_handlers('show')
         self.assertListEqual(handlers, list())
 
@@ -73,8 +73,7 @@ class TestEvent(unittest.TestCase):
             [boo_handler])
 
     def test_fire(self):
-        app = App(config)
-
+        app = App('test_fire', config)
         def fire():
             names.append('fire')
             event = Event('display', name='B')
@@ -100,8 +99,7 @@ class TestEvent(unittest.TestCase):
         self.assertNotEqual(runtime_tree.time_cost, -1)
 
     def test_pickle(self):
-        app = App(config)
-
+        app = App('test_pickle', config)
         def fire():
             names.append('fire')
             event = Event('display', name='B')
