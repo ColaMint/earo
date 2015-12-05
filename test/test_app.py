@@ -6,6 +6,7 @@ sys.path.append(os.path.dirname(sys.path[0]))
 from earo.app import App
 from earo.handler import Handler
 from earo.event import Event
+from earo.runtime_tree import Node, RuntimeTree
 import unittest
 from Queue import Queue
 import sys
@@ -16,9 +17,6 @@ config = {
     'debug': True,
     'log_path': '/tmp/test.log'
 }
-
-sys.stdout = None
-sys.stderr = None
 
 def foo(name):
     names.append('foo-%s' % name)
@@ -53,7 +51,7 @@ class TestEvent(unittest.TestCase):
         self.assertIsInstance(
             app._App__local.handler_runtime_node_queue, Queue)
         self.assertEqual(
-            app._App__local.logic_tree, None)
+            app._App__local.runtime_tree, None)
         self.assertEqual(app._App__local.unknown, None)
 
     def test_on_and_find(self):
@@ -90,17 +88,38 @@ class TestEvent(unittest.TestCase):
         app.on('show', fire_handler, True)
         app.on('display', eoo_handler)
         show_event = Event('show', name='A')
-        logic_tree = app.fire(show_event)
+        runtime_tree = app.fire(show_event)
         self.assertListEqual(
             names,
             ['foo-A', 'boo-A', 'fire', 'eoo-B'])
-        self.assertEqual(logic_tree.event_count, 2)
-        self.assertEqual(logic_tree.handler_runtime_count, 4)
-        self.assertEqual(logic_tree.exception_count, 1)
-        self.assertNotEqual(logic_tree.begin_time, None)
-        self.assertNotEqual(logic_tree.end_time, None)
-        self.assertNotEqual(logic_tree.time_cost, -1)
+        self.assertEqual(runtime_tree.event_count, 2)
+        self.assertEqual(runtime_tree.handler_runtime_count, 4)
+        self.assertEqual(runtime_tree.exception_count, 1)
+        self.assertNotEqual(runtime_tree.begin_time, None)
+        self.assertNotEqual(runtime_tree.end_time, None)
+        self.assertNotEqual(runtime_tree.time_cost, -1)
 
+    def test_pickle(self):
+        app = App(config)
+
+        def fire():
+            names.append('fire')
+            event = Event('display', name='B')
+            app.fire(event)
+        foo_handler = Handler(foo)
+        boo_handler = Handler(boo)
+        eoo_handler = Handler(eoo)
+        fire_handler = Handler(fire)
+        app.on('show', foo_handler)
+        app.on('show', boo_handler, True)
+        app.on('show', fire_handler, True)
+        app.on('display', eoo_handler)
+        show_event = Event('show', name='A')
+        runtime_tree = app.fire(show_event)
+        self.assertDictEqual(
+            RuntimeTree.loads(
+                runtime_tree.dumps()),
+         runtime_tree.dict)
 
 if __name__ == '__main__':
     unittest.main()

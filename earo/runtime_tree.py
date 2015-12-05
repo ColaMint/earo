@@ -2,8 +2,10 @@
 # -*- coding:utf-8 -*-
 from handler_runtime import HandlerRuntime
 from event import Event
-from util.time import datetime_to_str
 from util.dictable import Dictable, check_dictable
+import cPickle as pickle
+from uuid import uuid1
+from util.kv_database import KVDatabase
 
 
 class Node(Dictable):
@@ -24,7 +26,7 @@ class Node(Dictable):
     def dict(self):
         node = dict()
         node['item'] = self.item.dict
-        node['type'] = self.item.__class__
+        node['type'] = type(self.item).__name__
         node['child_nodes'] = list()
         for child_node in self.child_nodes:
             node['child_nodes'].append(child_node.dict)
@@ -37,10 +39,11 @@ class Tree(Dictable):
         check_dictable(root)
         self.root = root
 
-class LogicTree(Tree):
+class RuntimeTree(Tree):
 
     def __init__(self, root):
-        super(LogicTree, self).__init__(root)
+        super(RuntimeTree, self).__init__(root)
+        self.id = uuid1()
         self.begin_time = None
         self.end_time = None
         self.time_cost = None
@@ -78,13 +81,37 @@ class LogicTree(Tree):
     @property
     def dict(self):
         tree = dict()
+        tree['id'] = self.id
         tree['root'] = self.root.dict
-        tree['begin_time'] = datetime_to_str(
-            self.begin_time) if self.begin_time is not None else None
-        tree['end_time'] = datetime_to_str(
-            self.end_time) if self.end_time is not None else None
+        tree['begin_time'] = self.begin_time
+        tree['end_time'] = self.end_time
         tree['time_cost'] = self.time_cost
         tree['event_count'] = self.event_count
         tree['handler_runtime_count'] = self.handler_runtime_count
         tree['exception_count'] = self.exception_count
         return tree
+
+    @staticmethod
+    def loads(d):
+        return pickle.loads(str(d))
+
+    def dumps(self):
+        return pickle.dumps(self.dict)
+
+class RuntimeTreeStorage(object):
+
+    def __init__(self, db_path):
+        self.__db = KVDatabase(db_path)
+
+    def save(self, runtime_tree):
+        self.__db.set(runtime_tree.id, runtime_tree.dumps())
+
+    def find(self, id):
+        d = self.__db.get(id)
+        return RuntimeTree.loads(d) if d is not None else None
+
+    def remove(self, id):
+        self.__db.unset(id)
+
+    def remove_all(self):
+        self.__db.clear()

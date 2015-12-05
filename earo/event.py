@@ -32,7 +32,10 @@ class Event(Dictable):
     def dict(self):
         event = dict()
         event['event_name'] = self.event_name
-        event['params'] = self.params
+        event['params'] = dict()
+        for k, v in self.params.items():
+            if not k in self.built_in_fields:
+                event['params'][k] = v
         return event
 
 

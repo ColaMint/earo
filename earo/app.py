@@ -3,11 +3,10 @@
 from configure import Configure
 from Queue import Queue
 from util.local import Local
-from logic_tree import Node, LogicTree
+from runtime_tree import Node, RuntimeTree
 from handler_runtime import HandlerRuntime
 import logging
 import sys
-import traceback
 
 
 class App(object):
@@ -21,7 +20,7 @@ class App(object):
         local_defaults = {
             'event_handler_map': dict,
             'handler_runtime_node_queue': Queue,
-            'logic_tree': None,
+            'runtime_tree': None,
             'last_handler_runtime_node': None
         }
         self.__local = Local(**local_defaults)
@@ -64,8 +63,8 @@ class App(object):
 
     def fire(self, event):
         event_node = Node(event)
-        if self.__local.logic_tree is None:
-            self.__local.logic_tree = LogicTree(event_node)
+        if self.__local.runtime_tree is None:
+            self.__local.runtime_tree = RuntimeTree(event_node)
         for handler in self.__find_handlers(event.event_name):
             handler_runtime = HandlerRuntime(handler, event)
             handler_runtime_node = Node(handler_runtime)
@@ -79,7 +78,7 @@ class App(object):
                 handler_runtime.run()
                 if handler_runtime.exception is not None:
                     self.logger.error('\n' + handler_runtime.exception.traceback)
-            self.__local.logic_tree.statistics()
-            return self.__local.logic_tree
+            self.__local.runtime_tree.statistics()
+            return self.__local.runtime_tree
         else:
             self.__local.last_handler_runtime_node.add_child_node(event_node)

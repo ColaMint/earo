@@ -1,7 +1,6 @@
 #!/usr/bin/python
 # -*- coding:utf-8 -*-
 from datetime import datetime
-from util.time import datetime_to_str
 from util.dictable import Dictable
 
 class HandlerRuntime(Dictable):
@@ -39,14 +38,11 @@ class HandlerRuntime(Dictable):
     @property
     def dict(self):
         runtime = dict()
-        runtime['event_name'] = self.event_name
-        runtime['begin_time'] = datetime_to_str(
-            self.begin_time) if self.begin_time is not None else None
-        runtime['end_time'] = datetime_to_str(
-            self.end_time) if self.end_time is not None else None
+        runtime['begin_time'] = self.begin_time
+        runtime['end_time'] = self.end_time
         runtime['time_cost'] = self.time_cost
         runtime['exception'] = {
             'traceback': self.exception.traceback,
-            'message': self.exception.message()} if self.exception is not None else None
+            'message': self.exception.message} if self.exception is not None else None
         runtime['handler'] = self.handler.name
         return runtime
