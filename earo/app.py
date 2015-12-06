@@ -8,6 +8,7 @@ from handler_runtime import HandlerRuntime
 from broker import Broker
 from event_processor import EventProcessor
 from event_channel import EventChannel
+from runtime_tree import RuntimeTreeStorage
 import logging
 import sys
 
@@ -20,6 +21,7 @@ class App(object):
         self.__init_local_and_global()
         self.__init_logger()
         self.__init_broker_and_processors()
+        self.__init_runtime_tree_storage()
 
     def __init_local_and_global(self):
         local_defaults = {
@@ -57,6 +59,9 @@ class App(object):
             event_channel.register(self.__broker)
             event_processor = EventProcessor(id, self, event_channel)
             self.__event_processors.append(event_processor)
+
+    def __init_runtime_tree_storage(self):
+        self.runtime_tree_storage = RuntimeTreeStorage(self.config.runtime_db)
 
     def start(self):
         self.__broker.start()

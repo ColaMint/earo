@@ -13,7 +13,8 @@ import time
 
 config = {
     'debug': True,
-    'log_path': '/tmp/test.log'
+    'log_path': '/tmp/test.log',
+    'runtime_db': '/tmp/earo.db'
 }
 
 def foo(names, name):

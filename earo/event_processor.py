@@ -54,6 +54,8 @@ class EventProcessor(Thread):
                     (self.__local.runtime_tree.id,
                         handler_runtime.exception.traceback))
         self.__local.runtime_tree.statistics()
+        if not self.__app.config.debug and self.__local.runtime_tree.exception_count > 0:
+            self.__app.runtime_tree_storage.save(self.__local.runtime_tree)
         return self.__local.runtime_tree
 
     def __put_handler_runtime_to_queue_and_add_child_node(self, event_node):
