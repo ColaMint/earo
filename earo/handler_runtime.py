@@ -12,7 +12,8 @@ class HandlerRuntime(Dictable):
         self.handler = handler
         self.event = event
 
-    def run(self):
+    def run(self, event_processor):
+        self.event_processor = event_processor
         self.handler.handle(self.event, self)
 
     @property

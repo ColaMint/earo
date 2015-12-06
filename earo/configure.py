@@ -4,9 +4,10 @@
 
 class Configure(dict):
     """
-    debug       --  True means setup debug mode, default is False
-    log_path    --  the file path to save runtime log, default is '/tmp/earo.log'
-    runtime_db  --  the db path to save runtime_tree, default is '/tmp/earo.db'
+    debug           --  True means setup debug mode, default is False
+    log_path        --  the file path to save runtime log, default is '/tmp/earo.log'
+    runtime_db      --  the db path to save runtime_tree, default is '/tmp/earo.db'
+    processor_num   --  the num of event processors
     """
 
     def __init__(self, config={}):
@@ -17,6 +18,7 @@ class Configure(dict):
         self['debug']    = False
         self['log_path'] = '/tmp/earo.log'
         self['runtime_db'] = '/tmp/earo.db'
+        self['processor_num'] = 1
         pass
 
     def __getattr__(self, name):

@@ -6,27 +6,25 @@ sys.path.append(os.path.dirname(sys.path[0]))
 from earo.app import App
 from earo.handler import Handler
 from earo.event import Event
-from earo.runtime_tree import Node, RuntimeTree
+from earo.runtime_tree import RuntimeTree
 import unittest
-from Queue import Queue
 import sys
-
-names = []
+import time
 
 config = {
     'debug': True,
     'log_path': '/tmp/test.log'
 }
 
-def foo(name):
+def foo(names, name):
     names.append('foo-%s' % name)
 
 
-def boo(name):
+def boo(names, name):
     names.append('boo-%s' % name)
 
 
-def eoo(name):
+def eoo(names, name):
     names.append('eoo-%s' % name)
     raise Exception('eoo')
 
@@ -48,22 +46,18 @@ class TestEvent(unittest.TestCase):
     def test_local(self):
         app = App('test_local', config)
         self.assertDictEqual(app._App__local.event_handler_map, dict())
-        self.assertIsInstance(
-            app._App__local.handler_runtime_node_queue, Queue)
-        self.assertEqual(
-            app._App__local.runtime_tree, None)
         self.assertEqual(app._App__local.unknown, None)
 
     def test_on_and_find(self):
         app = App('test_on_and_find', config)
-        handlers = app._App__find_handlers('show')
+        handlers = app.find_handlers('show')
         self.assertListEqual(handlers, list())
 
         foo_handler = Handler(foo)
         boo_handler = Handler(boo)
         app.on('show', foo_handler)
         app.on('show', boo_handler, True)
-        handlers = app._App__find_handlers('show')
+        handlers = app.find_handlers('show')
         self.assertListEqual(handlers, [foo_handler, boo_handler])
         self.assertListEqual(
             app._App__global.event_handler_map['show'],
@@ -74,10 +68,10 @@ class TestEvent(unittest.TestCase):
 
     def test_fire(self):
         app = App('test_fire', config)
-        def fire():
+        def fire(self, names):
             names.append('fire')
-            event = Event('display', name='B')
-            app.fire(event)
+            event = Event('display', names=names, name='B')
+            self.fire(event)
         foo_handler = Handler(foo)
         boo_handler = Handler(boo)
         eoo_handler = Handler(eoo)
@@ -86,8 +80,9 @@ class TestEvent(unittest.TestCase):
         app.on('show', boo_handler, True)
         app.on('show', fire_handler, True)
         app.on('display', eoo_handler)
-        show_event = Event('show', name='A')
-        runtime_tree = app.fire(show_event)
+        names = list()
+        show_event = Event('show', names=names, name='A')
+        runtime_tree = app.fire(show_event, False)
         self.assertListEqual(
             names,
             ['foo-A', 'boo-A', 'fire', 'eoo-B'])
@@ -100,10 +95,10 @@ class TestEvent(unittest.TestCase):
 
     def test_pickle(self):
         app = App('test_pickle', config)
-        def fire():
+        def fire(self):
             names.append('fire')
-            event = Event('display', name='B')
-            app.fire(event)
+            event = Event('display', names=names, name='B')
+            self.fire(event)
         foo_handler = Handler(foo)
         boo_handler = Handler(boo)
         eoo_handler = Handler(eoo)
@@ -112,12 +107,30 @@ class TestEvent(unittest.TestCase):
         app.on('show', boo_handler, True)
         app.on('show', fire_handler, True)
         app.on('display', eoo_handler)
-        show_event = Event('show', name='A')
-        runtime_tree = app.fire(show_event)
+        names = list()
+        show_event = Event('show', names=names, name='A')
+        runtime_tree = app.fire(show_event, False)
         self.assertDictEqual(
             RuntimeTree.loads(
                 runtime_tree.dumps()),
          runtime_tree.dict)
+
+    def test_start_and_stop(self):
+        app = App('test_start_and_stop', config)
+        app.start()
+        foo_handler = Handler(foo)
+        boo_handler = Handler(boo)
+        app.on('show', foo_handler)
+        app.on('show', boo_handler, True)
+        names = list()
+        show_event = Event('show', names=names, name='background')
+        app.fire(show_event, False)
+        time.sleep(5)
+        app.stop()
+        self.assertListEqual(
+            names,
+            ['foo-background', 'boo-background'])
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -52,14 +52,14 @@ class TestEvent(unittest.TestCase):
     def test_build_params(self):
         handler = Handler(foo)
         event = Event('show', name='k')
-        params = handler._Handler__build_params(event)
+        params = handler._Handler__build_params(event, None)
         self.assertDictEqual(params, {'name': 'k', 'age': 15})
 
     def test_handle_func_missing(self):
         with self.assertRaises(HandleFuncParamMissing):
             handler = Handler(foo)
             event = Event('show')
-            handler.handle(event)
+            handler._Handler__build_params(event, None)
 
 
 if __name__ == '__main__':

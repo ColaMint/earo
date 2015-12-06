@@ -14,7 +14,7 @@ class Handler(object):
     def handle(self, event, handler_runtime):
         try:
             handler_runtime.record_begin_time()
-            params = self.__build_params(event)
+            params = self.__build_params(event, handler_runtime.event_processor)
             self.handle_func(**params)
         except Exception as e:
             e.traceback = traceback.format_exc()
@@ -47,16 +47,19 @@ class Handler(object):
                 if default_i >= 0:
                     self.__param_default[field] = argspec.defaults[default_i]
 
-    def __build_params(self, event):
+    def __build_params(self, event, event_processor):
         params = {}
         for field in self.__param_list:
-            if event.contains_key(field):
-                params[field] = event.get_param(field)
+            if field == 'self':
+                params[field] = event_processor
             else:
-                if field in self.__param_default:
-                    params[field] = self.__param_default[field]
+                if event.contains_key(field):
+                    params[field] = event.get_param(field)
                 else:
-                    raise HandleFuncParamMissing(field)
+                    if field in self.__param_default:
+                        params[field] = self.__param_default[field]
+                    else:
+                        raise HandleFuncParamMissing(field)
         return params
 
 

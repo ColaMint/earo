@@ -5,6 +5,9 @@ from Queue import Queue
 from util.local import Local
 from runtime_tree import Node, RuntimeTree
 from handler_runtime import HandlerRuntime
+from broker import Broker
+from event_processor import EventProcessor
+from event_channel import EventChannel
 import logging
 import sys
 
@@ -16,13 +19,11 @@ class App(object):
         self.config = Configure(config)
         self.__init_local_and_global()
         self.__init_logger()
+        self.__init_broker_and_processors()
 
     def __init_local_and_global(self):
         local_defaults = {
             'event_handler_map': dict,
-            'handler_runtime_node_queue': Queue,
-            'runtime_tree': None,
-            'last_handler_runtime_node': None
         }
         self.__local = Local(**local_defaults)
         self.__global = self
@@ -46,7 +47,28 @@ class App(object):
             self.logger.addHandler(fh)
             self.logger.setLevel(logging.INFO)
 
-    def __find_handlers(self, event_name):
+    def __init_broker_and_processors(self):
+        self.__broker = Broker(self)
+        self.__event_processor = EventProcessor(0, self)
+        self.__event_processors = list()
+        for i in range(self.config.processor_num):
+            id = i + 1
+            event_channel = EventChannel()
+            event_channel.register(self.__broker)
+            event_processor = EventProcessor(id, self, event_channel)
+            self.__event_processors.append(event_processor)
+
+    def start(self):
+        self.__broker.start()
+        for event_processor in self.__event_processors:
+            event_processor.start()
+
+    def stop(self):
+        self.__broker.stop()
+        for event_processor in self.__event_processors:
+            event_processor.stop()
+
+    def find_handlers(self, event_name):
         handlers = []
         if event_name in self.__global.event_handler_map:
             handlers.extend(self.__global.event_handler_map[event_name])
@@ -64,30 +86,8 @@ class App(object):
                 self.__global.event_handler_map[event_name] = []
             self.__global.event_handler_map[event_name].append(handler)
 
-    def fire(self, event):
-        event_node = Node(event)
-        if self.__local.runtime_tree is None:
-            self.__local.runtime_tree = RuntimeTree(event_node)
-        for handler in self.__find_handlers(event.event_name):
-            handler_runtime = HandlerRuntime(handler, event)
-            handler_runtime_node = Node(handler_runtime)
-            event_node.add_child_node(handler_runtime_node)
-            self.__local.handler_runtime_node_queue.put(handler_runtime_node)
-        if self.__local.last_handler_runtime_node is None:
-            while self.__local.handler_runtime_node_queue.qsize() > 0:
-                handler_runtime_node = self.__local.handler_runtime_node_queue.get()
-                self.__local.last_handler_runtime_node = handler_runtime_node
-                handler_runtime = handler_runtime_node.item
-                handler_runtime.run()
-                if handler_runtime.exception is not None:
-                    self.logger.error(
-                        'runtime_tree.id: %s\n%s' %
-                        (self.__local.runtime_tree.id,
-                         handler_runtime.exception.traceback))
-            runtime_tree = self.__local.runtime_tree
-            runtime_tree.statistics()
-            self.__local.runtime_tree = None
-            self.__local.last_handler_runtime_node = None
-            return runtime_tree
+    def fire(self, event, background=True):
+        if background:
+            self.__broker.put(event)
         else:
-            self.__local.last_handler_runtime_node.add_child_node(event_node)
+            return self.__event_processor.process_event(event)

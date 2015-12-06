@@ -22,12 +22,12 @@ class TestEvent(unittest.TestCase):
 
     def test_handler_name(self):
         handler = Handler(foo)
-        handler_runtime = HandlerRuntime(handler)
+        handler_runtime = HandlerRuntime(handler, None)
         self.assertEqual('__main__.foo', handler.name)
 
     def test_succeeded(self):
         handler = Handler(foo)
-        handler_runtime = HandlerRuntime(handler)
+        handler_runtime = HandlerRuntime(handler, None)
         self.assertFalse(handler_runtime.succeeded)
         handler_runtime.record_begin_time()
         self.assertFalse(handler_runtime.succeeded)
@@ -38,7 +38,7 @@ class TestEvent(unittest.TestCase):
 
     def test_time_cost(self):
         handler = Handler(foo)
-        handler_runtime = HandlerRuntime(handler)
+        handler_runtime = HandlerRuntime(handler, None)
         self.assertLess(handler_runtime.time_cost, 0)
         handler_runtime.record_begin_time()
         self.assertLess(handler_runtime.time_cost, 0)
