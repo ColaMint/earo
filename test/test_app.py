@@ -53,7 +53,6 @@ class TestEvent(unittest.TestCase):
         app = App('test_on_and_find', config)
         handlers = app.find_handlers('show')
         self.assertListEqual(handlers, list())
-
         foo_handler = Handler(foo)
         boo_handler = Handler(boo)
         app.on('show', foo_handler)
@@ -67,8 +66,8 @@ class TestEvent(unittest.TestCase):
             app._App__local.event_handler_map['show'],
             [boo_handler])
 
-    def test_fire(self):
-        app = App('test_fire', config)
+    def test_allowed_fire(self):
+        app = App('test_allowed_fire', config)
         def fire(self, names):
             names.append('fire')
             event = Event('display', names=names, name='B')
@@ -76,7 +75,7 @@ class TestEvent(unittest.TestCase):
         foo_handler = Handler(foo)
         boo_handler = Handler(boo)
         eoo_handler = Handler(eoo)
-        fire_handler = Handler(fire)
+        fire_handler = Handler(fire, ['display'])
         app.on('show', foo_handler)
         app.on('show', boo_handler, True)
         app.on('show', fire_handler, True)
@@ -94,6 +93,52 @@ class TestEvent(unittest.TestCase):
         self.assertNotEqual(runtime_tree.end_time, None)
         self.assertNotEqual(runtime_tree.time_cost, -1)
 
+    def test_not_allowed_fire(self):
+        app = App('test_not_allowed_fire', config)
+        def fire(self, names):
+            names.append('fire')
+            event = Event('display', names=names, name='B')
+            self.fire(event)
+        eoo_handler = Handler(eoo)
+        fire_handler = Handler(fire)
+        app.on('show', fire_handler, True)
+        app.on('display', eoo_handler)
+        names = list()
+        show_event = Event('show', names=names, name='A')
+        runtime_tree = app.fire(show_event, False)
+        self.assertListEqual(
+            names,
+            ['fire'])
+        self.assertEqual(runtime_tree.event_count, 1)
+        self.assertEqual(runtime_tree.handler_runtime_count, 1)
+        self.assertEqual(runtime_tree.exception_count, 1)
+        self.assertNotEqual(runtime_tree.begin_time, None)
+        self.assertNotEqual(runtime_tree.end_time, None)
+        self.assertNotEqual(runtime_tree.time_cost, -1)
+
+    def test_handler_decorator(self):
+        app = App('test_handler_decorator', config)
+        @app.handler('show', ['display'], True)
+        def koo(self, names, name):
+            names.append('koo-%s' % (name,))
+            event = Event('display', names=names, name='B')
+            self.fire(event)
+        foo_handler = Handler(foo)
+        app.on('display', foo_handler)
+        names = list()
+        show_event = Event('show', names=names, name='A')
+        runtime_tree = app.fire(show_event, False)
+        self.assertListEqual(
+            names,
+            ['koo-A', 'foo-B'])
+        self.assertEqual(runtime_tree.event_count, 2)
+        self.assertEqual(runtime_tree.handler_runtime_count, 2)
+        self.assertEqual(runtime_tree.exception_count, 0)
+        self.assertNotEqual(runtime_tree.begin_time, None)
+        self.assertNotEqual(runtime_tree.end_time, None)
+        self.assertNotEqual(runtime_tree.time_cost, -1)
+
+
     def test_pickle(self):
         app = App('test_pickle', config)
         def fire(self):
@@ -103,7 +148,7 @@ class TestEvent(unittest.TestCase):
         foo_handler = Handler(foo)
         boo_handler = Handler(boo)
         eoo_handler = Handler(eoo)
-        fire_handler = Handler(fire)
+        fire_handler = Handler(fire, ['display'])
         app.on('show', foo_handler)
         app.on('show', boo_handler, True)
         app.on('show', fire_handler, True)
@@ -116,6 +161,7 @@ class TestEvent(unittest.TestCase):
                 runtime_tree.dumps()),
          runtime_tree.dict)
 
+
     def test_start_and_stop(self):
         app = App('test_start_and_stop', config)
         app.start()
@@ -126,7 +172,7 @@ class TestEvent(unittest.TestCase):
         names = list()
         show_event = Event('show', names=names, name='background')
         app.fire(show_event, False)
-        time.sleep(5)
+        time.sleep(2)
         app.stop()
         self.assertListEqual(
             names,

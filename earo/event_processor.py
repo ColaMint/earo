@@ -66,9 +66,24 @@ class EventProcessor(Thread):
             self.__local.handler_runtime_node_queue.put(handler_runtime_node)
 
     def fire(self, event):
+        handler = self.__local.last_handler_runtime_node.item.handler
+        throws_events = handler.throws_events
+        if event.event_name not in throws_events:
+            raise UnExceptedEventFiredException(event, throws_events)
         event_node = Node(event)
         self.__put_handler_runtime_to_queue_and_add_child_node(event_node)
         self.__local.last_handler_runtime_node.add_child_node(event_node)
 
     def stop(self):
         self.__running = False
+
+
+class UnExceptedEventFiredException(Exception):
+
+    def __init__(self, event, throws_events):
+        self.event = event
+        self.throws_events = throws_events
+        super(
+            UnExceptedEventFiredException, self).__init__(
+            'Unexcepted event `%s` fired. Allowed events is %s.' %
+         (event.event_name, throws_events))

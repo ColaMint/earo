@@ -2,14 +2,17 @@
 # -*- coding:utf-8 -*-
 import inspect
 import traceback
-
+"""
+handler should declare what events will it fire.
+"""
 
 class Handler(object):
 
-    def __init__(self, handle_func):
+    def __init__(self, handle_func, throws_events=list()):
         self.__check_handle_func(handle_func)
         self.handle_func = handle_func
         self.name = '%s.%s' % (handle_func.__module__, handle_func.__name__)
+        self.throws_events = throws_events
 
     def handle(self, event, handler_runtime):
         try:

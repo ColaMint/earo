@@ -1,13 +1,11 @@
 #!/usr/bin/python
 # -*- coding:utf-8 -*-
 from configure import Configure
-from Queue import Queue
 from util.local import Local
-from runtime_tree import Node, RuntimeTree
-from handler_runtime import HandlerRuntime
 from broker import Broker
 from event_processor import EventProcessor
 from event_channel import EventChannel
+from handler import Handler
 from runtime_tree import RuntimeTreeStorage
 import logging
 import sys
@@ -63,6 +61,9 @@ class App(object):
     def __init_runtime_tree_storage(self):
         self.runtime_tree_storage = RuntimeTreeStorage(self.config.runtime_db)
 
+    def __load_include_modules(self):
+        pass
+
     def start(self):
         self.__broker.start()
         for event_processor in self.__event_processors:
@@ -96,3 +97,11 @@ class App(object):
             self.__broker.put(event)
         else:
             return self.__event_processor.process_event(event)
+
+    def handler(self, event_name, throws_events=list(), local=False):
+        def decorator(func):
+            self.on(event_name, Handler(func, throws_events), local)
+            def wrapper(*args, **kw):
+                return func(*args, **kw)
+            return wrapper
+        return decorator
