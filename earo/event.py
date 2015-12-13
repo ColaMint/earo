@@ -1,50 +1,93 @@
 #!/usr/bin/python
 # -*- coding:utf-8 -*-
-from util.dictable import Dictable
 
 
-class Event(Dictable):
-    built_in_fields = ['event']
+class Field(object):
 
-    def __init__(self, event_name, **kwarg):
-        self.event_name = event_name
-        self.params = {}
-        self.__set_built_in_params()
-        for k, v in kwarg.items():
-            self.set_param(k, v)
+    def __init__(self, field_type, default):
+        self.field_type = field_type
+        self.default = default() if callable(default) else default
+        self.match(self.default)
 
-    def __set_built_in_params(self):
-        self.params['event'] = self
+    def match(self, value):
+        if not isinstance(value, self.field_type):
+            raise TypeError('expect %s, not %s' %
+                             (type(self.default), self.field_type))
 
-    def get_param(self, key, default=None):
-        return self.params.get(key, default)
 
-    def set_param(self, key, value):
-        if key in self.built_in_fields:
-            raise BuiltInEventParam(key)
+class StringField(Field):
+
+    def __init__(self, default=''):
+        super(StringField, self).__init__(str, default)
+
+
+class BooleanField(Field):
+
+    def __init__(self, default=False):
+        super(BooleanField, self).__init__(bool, default)
+
+
+class IntegerField(Field):
+
+    def __init__(self, default=0):
+        super(IntegerField, self).__init__(int, default)
+
+
+class FloatField(Field):
+
+    def __init__(self, default=0.0):
+        super(FloatField, self).__init__(float, default)
+
+
+class ListField(Field):
+
+    def __init__(self, default=list()):
+        super(ListField, self).__init__(list, default)
+
+
+class DictField(Field):
+
+    def __init__(self, default=dict()):
+        super(DictField, self).__init__(dict, default)
+
+
+class EventMetaClass(type):
+
+    def __new__(cls, name, bases, attrs):
+        fields = []
+        mappings = {}
+        params = {}
+        new_attrs = {}
+        for k, v in attrs.items():
+            if isinstance(v, Field):
+                fields.append(v)
+                mappings[k] = v
+                params[k] = v.default
+            else:
+                new_attrs[k] = v
+        new_attrs['__fields__'] = fields
+        new_attrs['__mappings__'] = mappings
+        new_attrs['__params__'] = params
+        return super(EventMetaClass, cls).__new__(cls, name, bases, new_attrs)
+
+
+class Event(object):
+
+    __metaclass__ = EventMetaClass
+
+    def __getattr__(self, key):
+        if key in self.__params__:
+            return self.__params__[key]
         else:
-            self.params[key] = value
+            raise AttributeError(
+                "Event `%s` has no param `%s`" %
+                (self.__event_name__, key))
 
-    def contains_key(self, key):
-        return key in self.params
-
-    @property
-    def dict(self):
-        event = dict()
-        event['event_name'] = self.event_name
-        event['params'] = dict()
-        for k, v in self.params.items():
-            if not k in self.built_in_fields:
-                event['params'][k] = v
-        return event
-
-
-class BuiltInEventParam(Exception):
-
-    def __init__(self, field):
-        self.field = field
-        super(
-            BuiltInEventParam,
-            self).__init__(
-                '[BuiltInEventParam] could not modify built in event param field : `%s`.' %
-            field)
+    def __setattr__(self, key, value):
+        if key in self.__params__:
+            self.__mappings__[key].match(value)
+            self.__params__[key] = value
+        else:
+            raise AttributeError(
+                "Event `%s` has no param `%s`" %
+                (self.__event_name__, key))

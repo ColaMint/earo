@@ -2,25 +2,27 @@
 # -*- coding:utf-8 -*-
 from handler_runtime import HandlerRuntime
 from event import Event
-from util.dictable import Dictable, check_dictable
 import cPickle as pickle
 from uuid import uuid1
 from util.kv_database import KVDatabase
 
 
-class Node(Dictable):
+class RuntimeNode(object):
 
     def __init__(self, item):
-        check_dictable(item)
         self.item = item
         self.child_nodes = list()
+        if isinstance(self.item, Event):
+            self.type = Event
+        elif isinstance(self.item, HandlerRuntime):
+            self.type = HandlerRuntime
+        else:
+            raise TypeError(
+                'item should be instance of %s or %s, not %s' %
+                (Event, HandlerRuntime, type(item)))
 
     def add_child_node(self, node):
         self.child_nodes.append(node)
-
-    @property
-    def type(self):
-        return self.item.__class__
 
     @property
     def dict(self):
@@ -33,16 +35,10 @@ class Node(Dictable):
         return node
 
 
-class Tree(Dictable):
+class RuntimeTree(object):
 
     def __init__(self, root):
-        check_dictable(root)
         self.root = root
-
-class RuntimeTree(Tree):
-
-    def __init__(self, root):
-        super(RuntimeTree, self).__init__(root)
         self.id = uuid1()
         self.begin_time = None
         self.end_time = None
@@ -55,13 +51,13 @@ class RuntimeTree(Tree):
         self.event_count = 0
         self.handler_runtime_count = 0
         self.exception_count = 0
-        self.__statistics(self.root)
+        self._statistics(self.root)
         if self.end_time is not None and self.begin_time is not None:
             self.time_cost = (self.end_time - self.begin_time).microseconds
         else:
             self.time_cost = -1
 
-    def __statistics(self, node):
+    def _statistics(self, node):
         if node.type == Event:
             self.event_count += 1
         elif node.type == HandlerRuntime:
@@ -82,7 +78,7 @@ class RuntimeTree(Tree):
     def dict(self):
         tree = dict()
         tree['id'] = self.id
-        tree['root'] = self.root.dict
+        tree['root'] = self._parse_node(self.root)
         tree['begin_time'] = self.begin_time
         tree['end_time'] = self.end_time
         tree['time_cost'] = self.time_cost
@@ -91,12 +87,36 @@ class RuntimeTree(Tree):
         tree['exception_count'] = self.exception_count
         return tree
 
+    def _parse_node(node):
+        if node.type == Event:
+            event = node.item
+            event_dict = dict()
+            event_dict['event_name'] = event.name()
+            event_dict['params'] = event.params()
+            event_dict['child_nodes'] = [
+                self._parse_node(n) for x in node.child_nodes]
+            return event_dict
+        else:
+            handler_runtime = node.item
+            handler_runtime_dict = dict()
+            handler_runtime_dict['begin_time'] = handler_runtime.begin_time
+            handler_runtime_dict['end_time'] = handler_runtime.end_time
+            handler_runtime_dict['time_cost'] = handler_runtime.time_cost
+            handler_runtime_dict['exception'] = {
+                'traceback': handler_runtime.exception.traceback,
+                'message': handler_runtime.exception.message} if handler_runtime.exception is not None else None
+            handler_runtime_dict['handler'] = handler_runtime.handler.name
+            handler_runtime_dict['child_nodes'] = [
+                self._parse_node(n) for x in node.child_nodes]
+            return handler_runtime_dict
+
     @staticmethod
     def loads(d):
         return pickle.loads(str(d))
 
     def dumps(self):
         return pickle.dumps(self.dict)
+
 
 class RuntimeTreeStorage(object):
 

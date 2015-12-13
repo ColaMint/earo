@@ -1,9 +1,9 @@
 #!/usr/bin/python
 # -*- coding:utf-8 -*-
 from datetime import datetime
-from util.dictable import Dictable
 
-class HandlerRuntime(Dictable):
+
+class HandlerRuntime(object):
 
     def __init__(self, handler, event):
         self.begin_time = None
@@ -11,10 +11,18 @@ class HandlerRuntime(Dictable):
         self.exception = None
         self.handler = handler
         self.event = event
+        self.event_processor = None
 
     def run(self, event_processor):
         self.event_processor = event_processor
-        self.handler.handle(self.event, self)
+        try:
+            self.record_begin_time()
+            self.handler.handle(self.event, self)
+        except Exception as e:
+            e.traceback = traceback.format_exc()
+            self.record_exception(e)
+        finally:
+            self.record_end_time()
 
     @property
     def succeeded(self):
@@ -35,15 +43,3 @@ class HandlerRuntime(Dictable):
             return (self.end_time - self.begin_time).microseconds
         else:
             return -1
-
-    @property
-    def dict(self):
-        runtime = dict()
-        runtime['begin_time'] = self.begin_time
-        runtime['end_time'] = self.end_time
-        runtime['time_cost'] = self.time_cost
-        runtime['exception'] = {
-            'traceback': self.exception.traceback,
-            'message': self.exception.message} if self.exception is not None else None
-        runtime['handler'] = self.handler.name
-        return runtime

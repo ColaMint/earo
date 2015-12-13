@@ -3,63 +3,54 @@
 import sys
 import os
 sys.path.append(os.path.dirname(sys.path[0]))
-from earo.event import Event
-from earo.handler import Handler, HandleFuncParamMissing, InvalidHandleFunc
+from earo.event import Event, StringField
+from earo.handler import Handler
+from earo.handler_runtime import HandlerRuntime
+from earo.event_processor import EventProcessor
 import unittest
 
-
-def foo(name, age=15):
-    pass
+names = []
 
 
-def a1(name, age=15, *args):
-    pass
+def foo(self, event):
+    names.append(event.name)
 
 
-def a2(name, age=15, **kwargs):
-    pass
+class AEvent(Event):
+
+    name = StringField(default='earo')
 
 
-def a3(name, age=15, *args, **kwargs):
-    pass
+class BEvent(Event):
+
+    name = StringField(default='bbq')
 
 
 class TestEvent(unittest.TestCase):
 
     def setUp(self):
-        pass
+        names = []
 
     def tearDown(self):
         pass
 
-    def test_check_handle_func(self):
-        handler = Handler(foo)
-        self.assertSequenceEqual(handler._Handler__param_list, ['name', 'age'])
-        self.assertDictEqual(handler._Handler__param_default, {'age': 15})
-
     def test_handler_name(self):
-        handler = Handler(foo)
+        handler = Handler(AEvent, foo)
         self.assertEqual('__main__.foo', handler.name)
 
-    def test_invalid_handle_func(self):
-        with self.assertRaises(InvalidHandleFunc):
-            handler = Handler(a1)
-        with self.assertRaises(InvalidHandleFunc):
-            handler = Handler(a2)
-        with self.assertRaises(InvalidHandleFunc):
-            handler = Handler(a3)
+    def test_handle_excepted_event(self):
+        handler = Handler(AEvent, foo)
+        event = AEvent()
+        handler_runtime = HandlerRuntime(handler, event)
+        handler.handle(event, handler_runtime)
+        self.assertEqual(['earo'], names)
 
-    def test_build_params(self):
-        handler = Handler(foo)
-        event = Event('show', name='k')
-        params = handler._Handler__build_params(event, None)
-        self.assertDictEqual(params, {'name': 'k', 'age': 15})
-
-    def test_handle_func_missing(self):
-        with self.assertRaises(HandleFuncParamMissing):
-            handler = Handler(foo)
-            event = Event('show')
-            handler._Handler__build_params(event, None)
+    def test_handle_unexcepted_event(self):
+        handler = Handler(AEvent, foo)
+        event = BEvent()
+        handler_runtime = HandlerRuntime(handler, event)
+        with self.assertRaises(TypeError):
+            handler.handle(event, handler_runtime)
 
 
 if __name__ == '__main__':

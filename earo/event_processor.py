@@ -2,7 +2,7 @@
 # -*- coding:utf-8 -*-
 from threading import Thread
 from event_channel import EventChannel
-from runtime_tree import Node, RuntimeTree
+from runtime_tree import RuntimeNode, RuntimeTree
 from handler_runtime import HandlerRuntime
 from util.local import Local
 import Queue
@@ -13,10 +13,10 @@ class EventProcessor(Thread):
     def __init__(self, id, app, event_channel=None):
         super(EventProcessor, self).__init__()
         self.id = id
-        self.__app = app
-        self.__event_channel = event_channel
-        self.__running = True
-        self.__init_local_and_global()
+        self._app = app
+        self._event_channel = event_channel
+        self._running = True
+        self._init_local_and_global()
 
     def __init_local_and_global(self):
         local_defaults = {
@@ -24,66 +24,66 @@ class EventProcessor(Thread):
             'runtime_tree': None,
             'last_handler_runtime_node': None
         }
-        self.__local = Local(**local_defaults)
+        self._local = Local(**local_defaults)
 
     def run(self):
-        self.__app.logger.info('EventProcessor(%d) start working.' % (self.id,))
+        self._app.logger.info('EventProcessor(%d) start working.' % (self.id,))
         event = None
-        while self.__running:
+        while self._running:
             try:
-                event = self.__event_channel.get(True, 5)
+                event = self._event_channel.get(True, 5)
             except Queue.Empty:
                 pass
             if event is not None:
                 self.process_event(event)
-        self.__app.logger.info('EventProcessor(%d) stop working.' % (self.id,))
+        self._app.logger.info('EventProcessor(%d) stop working.' % (self.id,))
 
     def process_event(self, event):
         event_node = Node(event)
-        self.__local.runtime_tree = RuntimeTree(event_node)
-        self.__local.last_handler_runtime_node = None
-        self.__put_handler_runtime_to_queue_and_add_child_node(event_node)
-        while self.__local.handler_runtime_node_queue.qsize() > 0:
-            handler_runtime_node = self.__local.handler_runtime_node_queue.get()
-            self.__local.last_handler_runtime_node = handler_runtime_node
+        self._local.runtime_tree = RuntimeTree(event_node)
+        self._local.last_handler_runtime_node = None
+        self._put_handler_runtime_to_queue_and_add_child_node(event_node)
+        while self._local.handler_runtime_node_queue.qsize() > 0:
+            handler_runtime_node = self._local.handler_runtime_node_queue.get()
+            self._local.last_handler_runtime_node = handler_runtime_node
             handler_runtime = handler_runtime_node.item
             handler_runtime.run(self)
             if handler_runtime.exception is not None:
-                self.__app.logger.error(
+                self._app.logger.error(
                     'runtime_tree.id: %s\n%s' %
-                    (self.__local.runtime_tree.id,
+                    (self._local.runtime_tree.id,
                         handler_runtime.exception.traceback))
-        self.__local.runtime_tree.statistics()
-        if not self.__app.config.debug and self.__local.runtime_tree.exception_count > 0:
-            self.__app.runtime_tree_storage.save(self.__local.runtime_tree)
-        return self.__local.runtime_tree
+        self._local.runtime_tree.statistics()
+        if not self._app.config.debug and self._local.runtime_tree.exception_count > 0:
+            self._app.runtime_tree_storage.save(self._local.runtime_tree)
+        return self._local.runtime_tree
 
-    def __put_handler_runtime_to_queue_and_add_child_node(self, event_node):
-        for handler in self.__app.find_handlers(event_node.item.event_name):
+    def _put_handler_runtime_to_queue_and_add_child_node(self, event_node):
+        for handler in self._app.find_handlers(event_node.item.event_name):
             handler_runtime = HandlerRuntime(handler, event_node.item)
             handler_runtime_node = Node(handler_runtime)
             event_node.add_child_node(handler_runtime_node)
-            self.__local.handler_runtime_node_queue.put(handler_runtime_node)
+            self._local.handler_runtime_node_queue.put(handler_runtime_node)
 
     def fire(self, event):
-        handler = self.__local.last_handler_runtime_node.item.handler
-        throws_events = handler.throws_events
-        if event.event_name not in throws_events:
-            raise UnExceptedEventFiredException(event, throws_events)
+        handler = self._local.last_handler_runtime_node.item.handler
+        throw_events = handler.throw_events
+        if event.event_name not in throw_events:
+            raise UnExceptedEventFiredException(event, throw_events)
         event_node = Node(event)
-        self.__put_handler_runtime_to_queue_and_add_child_node(event_node)
-        self.__local.last_handler_runtime_node.add_child_node(event_node)
+        self._put_handler_runtime_to_queue_and_add_child_node(event_node)
+        self._local.last_handler_runtime_node.add_child_node(event_node)
 
     def stop(self):
-        self.__running = False
+        self._running = False
 
 
 class UnExceptedEventFiredException(Exception):
 
-    def __init__(self, event, throws_events):
+    def __init__(self, event, throw_events):
         self.event = event
-        self.throws_events = throws_events
+        self.throw_events = throw_events
         super(
             UnExceptedEventFiredException, self).__init__(
             'Unexcepted event `%s` fired. Allowed events is %s.' %
-         (event.event_name, throws_events))
+         (event.event_name, throw_events))
